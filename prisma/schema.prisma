@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int            @id @default(autoincrement())
+  username     String         @unique
+  password     String
+  role         String // e.g., "cashier", "admin"
+  createdAt    DateTime       @default(now())
+  transactions Transaction[]
+  CashRegister CashRegister[]
+  DailyClosing DailyClosing[]
+}
+
+model Product {
+  id               Int               @id @default(autoincrement())
+  name             String
+  sku              String            @unique
+  price            Float
+  stock            Int
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  transactionItems TransactionItem[]
+}
+
+model Customer {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  phone        String?
+  address      String?
+  preferences  Json? // e.g., {"favoriteCategory": "coffee"}
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[] // One-to-many relation
+}
+
+model Transaction {
+  id                    Int               @id @default(autoincrement())
+  userId                Int
+  user                  User              @relation(fields: [userId], references: [id])
+  customerId            Int? // Optional customer association
+  customer              Customer?         @relation(fields: [customerId], references: [id])
+  total                 Float
+  paymentMethod         String
+  paymentStatus         String?
+  stripePaymentIntentId String?
+  createdAt             DateTime          @default(now())
+  items                 TransactionItem[]
+  cashTransaction       CashTransaction?
+}
+
+model TransactionItem {
+  id            Int         @id @default(autoincrement())
+  transactionId Int
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  productId     Int
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Int
+  price         Float // Price at the time of sale
+}
+
+model CashRegister {
+  id               Int               @id @default(autoincrement())
+  userId           Int
+  user             User              @relation(fields: [userId], references: [id])
+  balance          Float             @default(0) // Current cash balance
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  cashTransactions CashTransaction[]
+  dailyClosings    DailyClosing[]
+}
+
+model CashTransaction {
+  id             Int          @id @default(autoincrement())
+  cashRegisterId Int
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  transactionId  Int          @unique
+  transaction    Transaction  @relation(fields: [transactionId], references: [id])
+  amountTendered Float // Cash provided by customer
+  changeGiven    Float // Change returned to customer
+  createdAt      DateTime     @default(now())
+}
+
+model DailyClosing {
+  id             Int          @id @default(autoincrement())
+  cashRegisterId Int
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id])
+  closingDate    DateTime     @default(now())
+  expectedCash   Float // Sum of cash transactions
+  actualCash     Float // Cash counted by cashier
+  discrepancy    Float // Difference (actual - expected)
+  notes          String? // Optional notes
+}

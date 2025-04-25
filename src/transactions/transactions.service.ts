@@ -1,0 +1,123 @@
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateTransactionDto } from './dto/transaction.dto';
+import { CashService } from '../cash/cash.service';
+import { CustomersService } from '../customers/customers.service';
+
+@Injectable()
+export class TransactionsService {
+  constructor(
+    private prisma: PrismaService,
+    private cashService: CashService,
+    private customersService: CustomersService,
+  ) {}
+
+  async create(createTransactionDto: CreateTransactionDto, userId: number) {
+    const { productIds, quantities, paymentMethod, customerId } =
+      createTransactionDto;
+    if (productIds.length !== quantities.length) {
+      throw new BadRequestException('Product IDs and quantities must match');
+    }
+    // Validate customer if provided
+    if (customerId) {
+      await this.customersService.findOne(customerId); // Throws if not found
+    }
+
+    // Fetch products
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
+
+    if (products.length !== productIds.length) {
+      throw new BadRequestException('Some products not found');
+    }
+
+    // Calculate total and validate stock
+    let total = 0;
+    const transactionItems = [];
+    for (let i = 0; i < productIds.length; i++) {
+      const product = products.find((p) => p.id === productIds[i]);
+      const quantity = quantities[i];
+
+      if (product.stock < quantity) {
+        throw new BadRequestException(`Insufficient stock for ${product.name}`);
+      }
+
+      total += product.price * quantity;
+      transactionItems.push({
+        productId: product.id,
+        quantity,
+        price: product.price,
+      });
+    }
+
+    if (
+      paymentMethod === 'cash' &&
+      (!createTransactionDto.amountTendered ||
+        createTransactionDto.amountTendered < total)
+    ) {
+      throw new BadRequestException('Insufficient cash tendered');
+    }
+
+    // Create transaction and update stock
+    return this.prisma.$transaction(async (prisma) => {
+      const transaction = await prisma.transaction.create({
+        data: {
+          userId,
+          total,
+          paymentMethod,
+          items: {
+            create: transactionItems,
+          },
+        },
+        include: { items: true },
+      });
+
+      // Update stock
+      for (let i = 0; i < productIds.length; i++) {
+        await prisma.product.update({
+          where: { id: productIds[i] },
+          data: { stock: { decrement: quantities[i] } },
+        });
+      }
+      // Handle cash transaction
+      if (paymentMethod === 'cash') {
+        await this.cashService.createCashTransaction(
+          {
+            transactionId: transaction.id,
+            amountTendered: createTransactionDto.amountTendered,
+          },
+          userId,
+        );
+      }
+
+      return transaction;
+    });
+  }
+
+  findAll() {
+    return this.prisma.transaction.findMany({
+      include: {
+        items: { include: { product: true } },
+        user: true,
+        customer: true,
+      },
+    });
+  }
+
+  getSalesReport(startDate: Date, endDate: Date) {
+    return this.prisma.transaction.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        items: { include: { product: true } },
+        user: true,
+        customer: true,
+      },
+    });
+  }
+}
