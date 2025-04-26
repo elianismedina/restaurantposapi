@@ -39,4 +39,15 @@ export class ProductsService {
     await this.findOne(id); // Ensure product exists
     return this.prisma.product.delete({ where: { id } });
   }
+
+  async assignCategoryToProduct(productId: number, categoryId: number) {
+    return this.prisma.product.update({
+      where: { id: productId },
+      data: {
+        categories: {
+          connect: { id: categoryId },
+        },
+      },
+    });
+  }
 }

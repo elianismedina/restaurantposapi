@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { CashModule } from './cash/cash.module';
 import { CustomersModule } from './customers/customers.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { RestaurantsModule } from './restaurants/restaurants.module';
     CashModule,
     CustomersModule,
     RestaurantsModule,
+    CategoriesModule,
   ],
   providers: [PrismaService],
 })

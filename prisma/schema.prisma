@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,7 +13,7 @@ model Restaurant {
   email     String   @unique
   phone     String?
   address   String?
-  logo      String? // URL to logo image
+  logo      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   branches  Branch[]
@@ -27,36 +21,35 @@ model Restaurant {
 }
 
 model Branch {
-  id           Int            @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
   name         String
   address      String
   phone        String?
   restaurantId Int
-  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id])
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  users        User[]
-  products     Product[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
   customers    Customer[]
+  products     Product[]
   transactions Transaction[]
-  cashRegister CashRegister[]
+  users        User[]
 }
 
 model User {
   id           Int            @id @default(autoincrement())
   username     String         @unique
   password     String
-  email        String         @unique
-  role         String // e.g., "cashier", "admin", "manager"
-  restaurantId Int?
-  restaurant   Restaurant?    @relation(fields: [restaurantId], references: [id])
-  branchId     Int?
-  branch       Branch?        @relation(fields: [branchId], references: [id])
+  role         String
   createdAt    DateTime       @default(now())
+  email        String
+  restaurantId Int?
+  branchId     Int?
   updatedAt    DateTime       @updatedAt
-  transactions Transaction[]
   CashRegister CashRegister[]
   DailyClosing DailyClosing[]
+  transactions Transaction[]
+  branch       Branch?        @relation(fields: [branchId], references: [id])
+  restaurant   Restaurant?    @relation(fields: [restaurantId], references: [id])
 }
 
 model Product {
@@ -67,6 +60,7 @@ model Product {
   stock            Int
   branchId         Int
   branch           Branch            @relation(fields: [branchId], references: [id])
+  categories       Category[]        @relation("ProductCategories") // Add this field
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   transactionItems TransactionItem[]
@@ -78,73 +72,83 @@ model Customer {
   email        String        @unique
   phone        String?
   address      String?
-  preferences  Json? // e.g., {"favoriteCategory": "coffee"}
-  branchId     Int
-  branch       Branch        @relation(fields: [branchId], references: [id])
+  preferences  Json?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  branchId     Int
+  branch       Branch        @relation(fields: [branchId], references: [id])
   transactions Transaction[]
 }
 
 model Transaction {
   id              Int               @id @default(autoincrement())
   userId          Int
-  user            User              @relation(fields: [userId], references: [id])
-  branchId        Int
-  branch          Branch            @relation(fields: [branchId], references: [id])
-  customerId      Int? // Optional customer association
-  customer        Customer?         @relation(fields: [customerId], references: [id])
+  customerId      Int?
   total           Float
   paymentMethod   String
   paymentStatus   String?
   createdAt       DateTime          @default(now())
-  items           TransactionItem[]
+  branchId        Int
   cashTransaction CashTransaction?
+  branch          Branch            @relation(fields: [branchId], references: [id])
+  customer        Customer?         @relation(fields: [customerId], references: [id])
+  user            User              @relation(fields: [userId], references: [id])
+  items           TransactionItem[]
 }
 
 model TransactionItem {
   id            Int         @id @default(autoincrement())
   transactionId Int
-  transaction   Transaction @relation(fields: [transactionId], references: [id])
   productId     Int
-  product       Product     @relation(fields: [productId], references: [id])
   quantity      Int
-  price         Float // Price at the time of sale
+  price         Float
+  product       Product     @relation(fields: [productId], references: [id])
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
 }
 
 model CashRegister {
   id               Int               @id @default(autoincrement())
   userId           Int
-  user             User              @relation(fields: [userId], references: [id])
-  balance          Float             @default(0) // Current cash balance
+  balance          Float             @default(0)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  user             User              @relation(fields: [userId], references: [id])
   cashTransactions CashTransaction[]
   dailyClosings    DailyClosing[]
-  Branch           Branch?           @relation(fields: [branchId], references: [id])
-  branchId         Int?
 }
 
 model CashTransaction {
   id             Int          @id @default(autoincrement())
   cashRegisterId Int
-  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
   transactionId  Int          @unique
-  transaction    Transaction  @relation(fields: [transactionId], references: [id])
-  amountTendered Float // Cash provided by customer
-  changeGiven    Float // Change returned to customer
+  amountTendered Float
+  changeGiven    Float
   createdAt      DateTime     @default(now())
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  transaction    Transaction  @relation(fields: [transactionId], references: [id])
 }
 
 model DailyClosing {
   id             Int          @id @default(autoincrement())
   cashRegisterId Int
-  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
   userId         Int
-  user           User         @relation(fields: [userId], references: [id])
   closingDate    DateTime     @default(now())
-  expectedCash   Float // Sum of cash transactions
-  actualCash     Float // Cash counted by cashier
-  discrepancy    Float // Difference (actual - expected)
-  notes          String? // Optional notes
+  expectedCash   Float
+  actualCash     Float
+  discrepancy    Float
+  notes          String?
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+}
+
+model Category {
+  id            Int        @id @default(autoincrement())
+  name          String     @unique
+  description   String?
+  parentId      Int? // For subcategories
+  parent        Category?  @relation("Subcategories", fields: [parentId], references: [id])
+  subcategories Category[] @relation("Subcategories")
+  products      Product[]  @relation("ProductCategories")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 }
