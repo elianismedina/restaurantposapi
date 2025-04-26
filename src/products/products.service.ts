@@ -6,9 +6,14 @@ import { CreateProductDto, UpdateProductDto } from './dto/products.dto';
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
-  create(createProductDto: CreateProductDto) {
+  create(createProductDto: CreateProductDto, branchId: number) {
     return this.prisma.product.create({
-      data: createProductDto,
+      data: {
+        ...createProductDto,
+        branch: {
+          connect: { id: branchId },
+        },
+      },
     });
   }
 

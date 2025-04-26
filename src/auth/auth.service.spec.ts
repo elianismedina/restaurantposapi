@@ -65,6 +65,7 @@ describe('AuthService', () => {
       username: 'testuser',
       password: 'password123',
       role: 'cashier',
+      email: 'test@example.com',
     };
 
     it('should register a new user successfully', async () => {
@@ -76,6 +77,7 @@ describe('AuthService', () => {
         id: 1,
         username: createUserDto.username,
         role: createUserDto.role,
+        email: createUserDto.email,
       };
       mockPrismaService.user.create.mockResolvedValue(expectedUser);
 
@@ -88,6 +90,7 @@ describe('AuthService', () => {
           username: createUserDto.username,
           password: 'hashedPassword',
           role: createUserDto.role,
+          email: createUserDto.email,
         },
       });
     });

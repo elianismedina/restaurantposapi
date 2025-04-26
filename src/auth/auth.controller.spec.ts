@@ -39,6 +39,7 @@ describe('AuthController', () => {
       username: 'testuser',
       password: 'password123',
       role: 'cashier',
+      email: 'test@example.com',
     };
 
     it('should register a new user', async () => {

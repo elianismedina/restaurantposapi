@@ -23,10 +23,16 @@ export class CustomersService {
 
   async create(
     createCustomerDto: CreateCustomerDto,
+    branchId: number,
   ): Promise<CustomerResponseDto> {
     try {
       const customer = await this.prisma.customer.create({
-        data: createCustomerDto,
+        data: {
+          ...createCustomerDto,
+          branch: {
+            connect: { id: branchId },
+          },
+        },
       });
       return this.transformCustomer(customer);
     } catch (error) {

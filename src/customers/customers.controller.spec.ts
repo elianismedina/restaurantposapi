@@ -2,6 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CustomersController } from './customers.controller';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
+import { Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user: {
+    branchId: number;
+    [key: string]: any;
+  };
+}
 
 describe('CustomersController', () => {
   let controller: CustomersController;
@@ -47,11 +55,18 @@ describe('CustomersController', () => {
       };
       mockCustomersService.create.mockResolvedValue(expectedCustomer);
 
-      const result = await controller.create(createCustomerDto);
+      const mockReq = {
+        user: {
+          branchId: 1,
+        },
+      } as RequestWithUser;
+
+      const result = await controller.create(createCustomerDto, mockReq);
 
       expect(result).toEqual(expectedCustomer);
       expect(mockCustomersService.create).toHaveBeenCalledWith(
         createCustomerDto,
+        1,
       );
     });
   });

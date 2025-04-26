@@ -12,10 +12,65 @@ import {
   CreateDailyClosingDto,
   DailyClosingResponseDto,
 } from './dto/daily-closing.dto';
+import {
+  CreateCashRegisterDto,
+  CashRegisterResponseDto,
+} from './dto/cash-register.dto';
 
 @Injectable()
 export class CashService {
   constructor(private prisma: PrismaService) {}
+
+  // New methods for cash register management
+  async createCashRegister(
+    userId: number,
+    createCashRegisterDto: CreateCashRegisterDto,
+  ): Promise<CashRegisterResponseDto> {
+    const existingRegister = await this.prisma.cashRegister.findFirst({
+      where: { userId },
+    });
+
+    if (existingRegister) {
+      throw new BadRequestException('User already has a cash register');
+    }
+
+    return this.prisma.cashRegister.create({
+      data: {
+        userId,
+        balance: createCashRegisterDto.initialBalance,
+      },
+    });
+  }
+
+  async getCashRegister(userId: number): Promise<CashRegisterResponseDto> {
+    const cashRegister = await this.prisma.cashRegister.findFirst({
+      where: { userId },
+    });
+
+    if (!cashRegister) {
+      throw new NotFoundException('Cash register not found');
+    }
+
+    return cashRegister;
+  }
+
+  async updateCashRegisterBalance(
+    userId: number,
+    amount: number,
+  ): Promise<CashRegisterResponseDto> {
+    const cashRegister = await this.prisma.cashRegister.findFirst({
+      where: { userId },
+    });
+
+    if (!cashRegister) {
+      throw new NotFoundException('Cash register not found');
+    }
+
+    return this.prisma.cashRegister.update({
+      where: { id: cashRegister.id },
+      data: { balance: amount },
+    });
+  }
 
   async createCashTransaction(
     dto: CreateCashTransactionDto,

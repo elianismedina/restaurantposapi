@@ -2,6 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { CreateProductDto, UpdateProductDto } from './dto/products.dto';
+import { Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user: {
+    branchId: number;
+    [key: string]: any;
+  };
+}
 
 describe('ProductsController', () => {
   let controller: ProductsController;
@@ -47,10 +55,19 @@ describe('ProductsController', () => {
       };
       mockProductsService.create.mockResolvedValue(expectedProduct);
 
-      const result = await controller.create(createProductDto);
+      const mockReq = {
+        user: {
+          branchId: 1,
+        },
+      } as RequestWithUser;
+
+      const result = await controller.create(createProductDto, mockReq);
 
       expect(result).toEqual(expectedProduct);
-      expect(mockProductsService.create).toHaveBeenCalledWith(createProductDto);
+      expect(mockProductsService.create).toHaveBeenCalledWith(
+        createProductDto,
+        1,
+      );
     });
   });
 

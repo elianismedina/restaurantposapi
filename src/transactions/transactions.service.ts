@@ -12,7 +12,11 @@ export class TransactionsService {
     private customersService: CustomersService,
   ) {}
 
-  async create(createTransactionDto: CreateTransactionDto, userId: number) {
+  async create(
+    createTransactionDto: CreateTransactionDto,
+    userId: number,
+    branchId: number,
+  ) {
     const { productIds, quantities, paymentMethod, customerId } =
       createTransactionDto;
     if (productIds.length !== quantities.length) {
@@ -63,7 +67,12 @@ export class TransactionsService {
     return this.prisma.$transaction(async (prisma) => {
       const transaction = await prisma.transaction.create({
         data: {
-          userId,
+          user: {
+            connect: { id: userId },
+          },
+          branch: {
+            connect: { id: branchId },
+          },
           total,
           paymentMethod,
           items: {
@@ -98,11 +107,24 @@ export class TransactionsService {
   findAll() {
     return this.prisma.transaction.findMany({
       include: {
-        items: { include: { product: true } },
+        items: true,
         user: true,
-        customer: true,
       },
     });
+  }
+
+  async findOne(id: number) {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id },
+      include: {
+        items: true,
+        user: true,
+      },
+    });
+    if (!transaction) {
+      throw new BadRequestException('Transaction not found');
+    }
+    return transaction;
   }
 
   getSalesReport(startDate: Date, endDate: Date) {
@@ -114,9 +136,8 @@ export class TransactionsService {
         },
       },
       include: {
-        items: { include: { product: true } },
+        items: true,
         user: true,
-        customer: true,
       },
     });
   }

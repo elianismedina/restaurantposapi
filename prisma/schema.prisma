@@ -13,12 +13,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Restaurant {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  phone     String?
+  address   String?
+  logo      String? // URL to logo image
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  branches  Branch[]
+  users     User[]
+}
+
+model Branch {
+  id           Int            @id @default(autoincrement())
+  name         String
+  address      String
+  phone        String?
+  restaurantId Int
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  users        User[]
+  products     Product[]
+  customers    Customer[]
+  transactions Transaction[]
+  cashRegister CashRegister[]
+}
+
 model User {
   id           Int            @id @default(autoincrement())
   username     String         @unique
   password     String
-  role         String // e.g., "cashier", "admin"
+  email        String         @unique
+  role         String // e.g., "cashier", "admin", "manager"
+  restaurantId Int?
+  restaurant   Restaurant?    @relation(fields: [restaurantId], references: [id])
+  branchId     Int?
+  branch       Branch?        @relation(fields: [branchId], references: [id])
   createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   transactions Transaction[]
   CashRegister CashRegister[]
   DailyClosing DailyClosing[]
@@ -30,6 +65,8 @@ model Product {
   sku              String            @unique
   price            Float
   stock            Int
+  branchId         Int
+  branch           Branch            @relation(fields: [branchId], references: [id])
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   transactionItems TransactionItem[]
@@ -42,24 +79,27 @@ model Customer {
   phone        String?
   address      String?
   preferences  Json? // e.g., {"favoriteCategory": "coffee"}
+  branchId     Int
+  branch       Branch        @relation(fields: [branchId], references: [id])
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  transactions Transaction[] // One-to-many relation
+  transactions Transaction[]
 }
 
 model Transaction {
-  id                    Int               @id @default(autoincrement())
-  userId                Int
-  user                  User              @relation(fields: [userId], references: [id])
-  customerId            Int? // Optional customer association
-  customer              Customer?         @relation(fields: [customerId], references: [id])
-  total                 Float
-  paymentMethod         String
-  paymentStatus         String?
-  stripePaymentIntentId String?
-  createdAt             DateTime          @default(now())
-  items                 TransactionItem[]
-  cashTransaction       CashTransaction?
+  id              Int               @id @default(autoincrement())
+  userId          Int
+  user            User              @relation(fields: [userId], references: [id])
+  branchId        Int
+  branch          Branch            @relation(fields: [branchId], references: [id])
+  customerId      Int? // Optional customer association
+  customer        Customer?         @relation(fields: [customerId], references: [id])
+  total           Float
+  paymentMethod   String
+  paymentStatus   String?
+  createdAt       DateTime          @default(now())
+  items           TransactionItem[]
+  cashTransaction CashTransaction?
 }
 
 model TransactionItem {
@@ -81,6 +121,8 @@ model CashRegister {
   updatedAt        DateTime          @updatedAt
   cashTransactions CashTransaction[]
   dailyClosings    DailyClosing[]
+  Branch           Branch?           @relation(fields: [branchId], references: [id])
+  branchId         Int?
 }
 
 model CashTransaction {

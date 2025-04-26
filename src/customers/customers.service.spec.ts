@@ -40,6 +40,7 @@ describe('CustomersService', () => {
       name: 'Test Customer',
       preferences: { theme: 'dark' },
     };
+    const branchId = 1;
 
     it('should create a customer successfully', async () => {
       const expectedCustomer = {
@@ -48,11 +49,16 @@ describe('CustomersService', () => {
       };
       mockPrismaService.customer.create.mockResolvedValue(expectedCustomer);
 
-      const result = await service.create(createCustomerDto);
+      const result = await service.create(createCustomerDto, branchId);
 
       expect(result).toEqual(expectedCustomer);
       expect(mockPrismaService.customer.create).toHaveBeenCalledWith({
-        data: createCustomerDto,
+        data: {
+          ...createCustomerDto,
+          branch: {
+            connect: { id: branchId },
+          },
+        },
       });
     });
 
@@ -61,7 +67,7 @@ describe('CustomersService', () => {
         code: 'P2002',
       });
 
-      await expect(service.create(createCustomerDto)).rejects.toThrow(
+      await expect(service.create(createCustomerDto, branchId)).rejects.toThrow(
         ConflictException,
       );
     });

@@ -7,6 +7,7 @@ import {
   Put,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto, UpdateProductDto } from './dto/products.dto';
@@ -17,6 +18,14 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user: {
+    branchId: number;
+    [key: string]: any;
+  };
+}
 
 @ApiTags('products')
 @Controller('products')
@@ -29,8 +38,12 @@ export class ProductsController {
   @ApiOperation({ summary: 'Create a new product' })
   @ApiResponse({ status: 201, description: 'Product created successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.create(createProductDto);
+  create(
+    @Body() createProductDto: CreateProductDto,
+    @Req() req: RequestWithUser,
+  ) {
+    const branchId = req.user.branchId;
+    return this.productsService.create(createProductDto, branchId);
   }
 
   @Get()

@@ -41,6 +41,7 @@ describe('ProductsService', () => {
       price: 100,
       stock: 10,
     };
+    const branchId = 1;
 
     it('should create a product successfully', async () => {
       const expectedProduct = {
@@ -49,11 +50,16 @@ describe('ProductsService', () => {
       };
       mockPrismaService.product.create.mockResolvedValue(expectedProduct);
 
-      const result = await service.create(createProductDto);
+      const result = await service.create(createProductDto, branchId);
 
       expect(result).toEqual(expectedProduct);
       expect(mockPrismaService.product.create).toHaveBeenCalledWith({
-        data: createProductDto,
+        data: {
+          ...createProductDto,
+          branch: {
+            connect: { id: branchId },
+          },
+        },
       });
     });
   });

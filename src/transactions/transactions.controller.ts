@@ -18,6 +18,14 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 
+interface RequestWithUser extends Request {
+  user: {
+    userId: number;
+    branchId: number;
+    [key: string]: any;
+  };
+}
+
 @ApiTags('transactions')
 @Controller('transactions')
 export class TransactionsController {
@@ -30,10 +38,14 @@ export class TransactionsController {
   @ApiResponse({ status: 201, description: 'Transaction created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  create(@Body() createTransactionDto: CreateTransactionDto, @Request() req) {
+  create(
+    @Body() createTransactionDto: CreateTransactionDto,
+    @Request() req: RequestWithUser,
+  ) {
     return this.transactionsService.create(
       createTransactionDto,
       req.user.userId,
+      req.user.branchId,
     );
   }
 

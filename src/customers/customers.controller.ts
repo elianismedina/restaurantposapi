@@ -7,6 +7,7 @@ import {
   Put,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { CustomersService } from './customers.service';
 import {
@@ -21,6 +22,14 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user: {
+    branchId: number;
+    [key: string]: any;
+  };
+}
 
 @ApiTags('customers')
 @Controller('customers')
@@ -38,8 +47,12 @@ export class CustomersController {
   })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  create(@Body() createCustomerDto: CreateCustomerDto) {
-    return this.customersService.create(createCustomerDto);
+  create(
+    @Body() createCustomerDto: CreateCustomerDto,
+    @Req() req: RequestWithUser,
+  ) {
+    const branchId = req.user.branchId;
+    return this.customersService.create(createCustomerDto, branchId);
   }
 
   @UseGuards(AuthGuard('jwt'))
