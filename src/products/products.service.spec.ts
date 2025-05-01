@@ -187,4 +187,46 @@ describe('ProductsService', () => {
       await expect(service.remove(1)).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe('findByCategory', () => {
+    it('should return products belonging to a specific category', async () => {
+      const categoryId = 1;
+      const expectedProducts = [
+        {
+          id: 1,
+          name: 'Product 1',
+          sku: 'PROD-001',
+          price: 100,
+          stock: 10,
+          categories: [{ id: categoryId, name: 'Category 1' }],
+        },
+        {
+          id: 2,
+          name: 'Product 2',
+          sku: 'PROD-002',
+          price: 200,
+          stock: 20,
+          categories: [{ id: categoryId, name: 'Category 1' }],
+        },
+      ];
+
+      mockPrismaService.product.findMany.mockResolvedValue(expectedProducts);
+
+      const result = await service.findByCategory(categoryId);
+
+      expect(result).toEqual(expectedProducts);
+      expect(mockPrismaService.product.findMany).toHaveBeenCalledWith({
+        where: {
+          categories: {
+            some: {
+              id: categoryId,
+            },
+          },
+        },
+        include: {
+          categories: true,
+        },
+      });
+    });
+  });
 });

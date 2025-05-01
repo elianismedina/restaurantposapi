@@ -6,12 +6,24 @@ import { CreateProductDto, UpdateProductDto } from './dto/products.dto';
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
-  create(createProductDto: CreateProductDto, branchId: number) {
+  create(createProductDto: CreateProductDto, branchId: number | string) {
+    const branchIdNumber =
+      typeof branchId === 'string' ? parseInt(branchId, 10) : branchId;
+
+    if (isNaN(branchIdNumber)) {
+      throw new Error('Invalid branchId: must be a number');
+    }
+
     return this.prisma.product.create({
       data: {
-        ...createProductDto,
+        name: createProductDto.name,
+        sku: createProductDto.sku,
+        price: createProductDto.price,
+        stock: createProductDto.stock,
         branch: {
-          connect: { id: branchId },
+          connect: {
+            id: branchIdNumber, // Ensure branchId is a number
+          },
         },
       },
     });
@@ -47,6 +59,21 @@ export class ProductsService {
         categories: {
           connect: { id: categoryId },
         },
+      },
+    });
+  }
+
+  async findByCategory(categoryId: number) {
+    return this.prisma.product.findMany({
+      where: {
+        categories: {
+          some: {
+            id: categoryId,
+          },
+        },
+      },
+      include: {
+        categories: true, // Include category details if needed
       },
     });
   }

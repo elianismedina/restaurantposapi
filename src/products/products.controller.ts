@@ -7,7 +7,8 @@ import {
   Put,
   Delete,
   UseGuards,
-  Req,
+  Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto, UpdateProductDto } from './dto/products.dto';
@@ -19,14 +20,6 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: {
-    branchId: number;
-    [key: string]: any;
-  };
-}
-
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
@@ -38,12 +31,17 @@ export class ProductsController {
   @ApiOperation({ summary: 'Create a new product' })
   @ApiResponse({ status: 201, description: 'Product created successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  create(
+  createProduct(
     @Body() createProductDto: CreateProductDto,
-    @Req() req: RequestWithUser,
+    @Query('branchId') branchId: string, // branchId will be a string from the query
   ) {
-    const branchId = req.user.branchId;
-    return this.productsService.create(createProductDto, branchId);
+    const branchIdNumber = parseInt(branchId, 10);
+
+    if (isNaN(branchIdNumber)) {
+      throw new BadRequestException('branchId must be a valid number');
+    }
+
+    return this.productsService.create(createProductDto, branchIdNumber);
   }
 
   @Get()

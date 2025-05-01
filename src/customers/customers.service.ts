@@ -17,7 +17,7 @@ export class CustomersService {
   private transformCustomer(customer: any): CustomerResponseDto {
     return {
       ...customer,
-      preferences: customer.preferences as Record<string, any>,
+      preferences: customer.preferences as Record<string, any>, // Explicitly cast preferences
     };
   }
 
@@ -25,22 +25,26 @@ export class CustomersService {
     createCustomerDto: CreateCustomerDto,
     branchId: number,
   ): Promise<CustomerResponseDto> {
-    try {
-      const customer = await this.prisma.customer.create({
-        data: {
-          ...createCustomerDto,
-          branch: {
-            connect: { id: branchId },
+    if (!branchId) {
+      throw new Error('branchId is required to create a customer');
+    }
+
+    const customer = await this.prisma.customer.create({
+      data: {
+        name: createCustomerDto.name,
+        email: createCustomerDto.email,
+        phone: createCustomerDto.phone,
+        address: createCustomerDto.address,
+        preferences: createCustomerDto.preferences,
+        branch: {
+          connect: {
+            id: branchId,
           },
         },
-      });
-      return this.transformCustomer(customer);
-    } catch (error) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('Email already exists');
-      }
-      throw error;
-    }
+      },
+    });
+
+    return this.transformCustomer(customer); // Transform the customer before returning
   }
 
   async findAll(): Promise<CustomerResponseDto[]> {

@@ -7,7 +7,8 @@ import {
   Put,
   Delete,
   UseGuards,
-  Req,
+  Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { CustomersService } from './customers.service';
 import {
@@ -23,13 +24,6 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: {
-    branchId: number;
-    [key: string]: any;
-  };
-}
 
 @ApiTags('customers')
 @Controller('customers')
@@ -47,12 +41,17 @@ export class CustomersController {
   })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  create(
+  async createCustomer(
     @Body() createCustomerDto: CreateCustomerDto,
-    @Req() req: RequestWithUser,
+    @Query('branchId') branchId: string, // branchId will be a string from the query
   ) {
-    const branchId = req.user.branchId;
-    return this.customersService.create(createCustomerDto, branchId);
+    const branchIdNumber = parseInt(branchId, 10);
+
+    if (isNaN(branchIdNumber)) {
+      throw new BadRequestException('branchId must be a valid number');
+    }
+
+    return this.customersService.create(createCustomerDto, branchIdNumber);
   }
 
   @UseGuards(AuthGuard('jwt'))
