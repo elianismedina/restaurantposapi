@@ -6,6 +6,7 @@ import {
   Query,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/transaction.dto';
@@ -31,9 +32,9 @@ interface RequestWithUser extends Request {
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
+  @Post()
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  @Post()
   @ApiOperation({ summary: 'Create a new transaction' })
   @ApiResponse({ status: 201, description: 'Transaction created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -42,10 +43,16 @@ export class TransactionsController {
     @Body() createTransactionDto: CreateTransactionDto,
     @Request() req: RequestWithUser,
   ) {
+    const { userId, branchId } = req.user;
+
+    if (!branchId) {
+      throw new BadRequestException('Branch ID is required');
+    }
+
     return this.transactionsService.create(
       createTransactionDto,
-      req.user.userId,
-      req.user.branchId,
+      userId,
+      branchId,
     );
   }
 

@@ -38,18 +38,18 @@ model Branch {
 model User {
   id           Int            @id @default(autoincrement())
   username     String         @unique
+  email        String
   password     String
   role         String
-  createdAt    DateTime       @default(now())
-  email        String
-  restaurantId Int?
   branchId     Int?
-  updatedAt    DateTime       @updatedAt
+  branch       Branch?        @relation(fields: [branchId], references: [id])
+  Restaurant   Restaurant?    @relation(fields: [restaurantId], references: [id])
+  restaurantId Int?
+  Transaction  Transaction[]
   CashRegister CashRegister[]
   DailyClosing DailyClosing[]
-  transactions Transaction[]
-  branch       Branch?        @relation(fields: [branchId], references: [id])
-  restaurant   Restaurant?    @relation(fields: [restaurantId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 }
 
 model Product {
@@ -58,12 +58,12 @@ model Product {
   sku              String            @unique
   price            Float
   stock            Int
-  branchId         Int
-  branch           Branch            @relation(fields: [branchId], references: [id])
-  categories       Category[]        @relation("ProductCategories") // Add this field
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  branchId         Int
+  branch           Branch            @relation(fields: [branchId], references: [id])
   transactionItems TransactionItem[]
+  categories       Category[]        @relation("ProductCategories")
 }
 
 model Customer {
@@ -145,10 +145,10 @@ model Category {
   id            Int        @id @default(autoincrement())
   name          String     @unique
   description   String?
-  parentId      Int? // For subcategories
+  parentId      Int?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   parent        Category?  @relation("Subcategories", fields: [parentId], references: [id])
   subcategories Category[] @relation("Subcategories")
   products      Product[]  @relation("ProductCategories")
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
 }

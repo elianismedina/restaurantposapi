@@ -23,10 +23,10 @@ export class AuthController {
   }
 
   @Post('login')
-  @ApiOperation({ summary: 'Log in a user and return JWT' })
+  @ApiOperation({ summary: 'User login' })
   @ApiResponse({ status: 200, description: 'Login successful' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  login(@Body() loginDto: LoginDto) {
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 

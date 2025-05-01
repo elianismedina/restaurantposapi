@@ -19,15 +19,12 @@ export class TransactionsService {
   ) {
     const { productIds, quantities, paymentMethod, customerId } =
       createTransactionDto;
+
     if (productIds.length !== quantities.length) {
       throw new BadRequestException('Product IDs and quantities must match');
     }
-    // Validate customer if provided
-    if (customerId) {
-      await this.customersService.findOne(customerId); // Throws if not found
-    }
 
-    // Fetch products
+    // Fetch products and validate stock
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
     });
@@ -36,7 +33,6 @@ export class TransactionsService {
       throw new BadRequestException('Some products not found');
     }
 
-    // Calculate total and validate stock
     let total = 0;
     const transactionItems = [];
     for (let i = 0; i < productIds.length; i++) {
@@ -55,14 +51,6 @@ export class TransactionsService {
       });
     }
 
-    if (
-      paymentMethod === 'cash' &&
-      (!createTransactionDto.amountTendered ||
-        createTransactionDto.amountTendered < total)
-    ) {
-      throw new BadRequestException('Insufficient cash tendered');
-    }
-
     // Create transaction and update stock
     return this.prisma.$transaction(async (prisma) => {
       const transaction = await prisma.transaction.create({
@@ -73,6 +61,11 @@ export class TransactionsService {
           branch: {
             connect: { id: branchId },
           },
+          customer: customerId
+            ? {
+                connect: { id: customerId }, // Associate transaction with the customer
+              }
+            : undefined,
           total,
           paymentMethod,
           items: {
@@ -88,16 +81,6 @@ export class TransactionsService {
           where: { id: productIds[i] },
           data: { stock: { decrement: quantities[i] } },
         });
-      }
-      // Handle cash transaction
-      if (paymentMethod === 'cash') {
-        await this.cashService.createCashTransaction(
-          {
-            transactionId: transaction.id,
-            amountTendered: createTransactionDto.amountTendered,
-          },
-          userId,
-        );
       }
 
       return transaction;

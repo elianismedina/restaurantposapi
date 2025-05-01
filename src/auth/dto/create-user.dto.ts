@@ -1,4 +1,4 @@
-import { IsString, MinLength, IsEmail } from 'class-validator';
+import { IsString, MinLength, IsEmail, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUserDto {
@@ -18,6 +18,10 @@ export class CreateUserDto {
   @ApiProperty({ description: 'User role (e.g., cashier, admin)' })
   @IsString()
   role: string;
+
+  @ApiProperty({ description: 'Branch ID associated with the user' })
+  @IsNumber()
+  branchId: number;
 }
 
 export class LoginDto {

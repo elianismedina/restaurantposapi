@@ -30,4 +30,9 @@ export class CreateTransactionDto {
   @IsNumber()
   @IsOptional()
   customerId?: number;
+
+  @ApiProperty({ description: 'Branch ID (optional)', required: false })
+  @IsNumber()
+  @IsOptional()
+  branchId?: number;
 }
