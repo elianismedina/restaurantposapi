@@ -43,13 +43,13 @@ model User {
   role         String
   branchId     Int?
   branch       Branch?        @relation(fields: [branchId], references: [id])
-  Restaurant   Restaurant?    @relation(fields: [restaurantId], references: [id])
   restaurantId Int?
-  Transaction  Transaction[]
+  Restaurant   Restaurant?    @relation(fields: [restaurantId], references: [id])
   CashRegister CashRegister[]
   DailyClosing DailyClosing[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+  Transaction  Transaction[]
 }
 
 model Product {
@@ -72,28 +72,28 @@ model Customer {
   email        String        @unique
   phone        String?
   address      String?
-  preferences  Json?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  preferences  Json
   branchId     Int
   branch       Branch        @relation(fields: [branchId], references: [id])
-  transactions Transaction[]
+  transactions Transaction[] // Ensure this relation exists
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Transaction {
   id              Int               @id @default(autoincrement())
-  userId          Int
   customerId      Int?
+  Customer        Customer?         @relation(fields: [customerId], references: [id]) // Relation to Customer
+  items           TransactionItem[] // Relation to transaction items
+  userId          Int
+  User            User              @relation(fields: [userId], references: [id])
+  branchId        Int
+  Branch          Branch            @relation(fields: [branchId], references: [id])
   total           Float
   paymentMethod   String
-  paymentStatus   String?
   createdAt       DateTime          @default(now())
-  branchId        Int
-  cashTransaction CashTransaction?
-  branch          Branch            @relation(fields: [branchId], references: [id])
-  customer        Customer?         @relation(fields: [customerId], references: [id])
-  user            User              @relation(fields: [userId], references: [id])
-  items           TransactionItem[]
+  updatedAt       DateTime          @updatedAt
+  CashTransaction CashTransaction?
 }
 
 model TransactionItem {
@@ -102,30 +102,30 @@ model TransactionItem {
   productId     Int
   quantity      Int
   price         Float
-  product       Product     @relation(fields: [productId], references: [id])
-  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  Transaction   Transaction @relation(fields: [transactionId], references: [id])
+  Product       Product     @relation(fields: [productId], references: [id])
 }
 
 model CashRegister {
   id               Int               @id @default(autoincrement())
-  userId           Int
+  userId           Int               @unique
+  user             User              @relation(fields: [userId], references: [id])
   balance          Float             @default(0)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  user             User              @relation(fields: [userId], references: [id])
   cashTransactions CashTransaction[]
-  dailyClosings    DailyClosing[]
+  DailyClosing     DailyClosing[]
 }
 
 model CashTransaction {
   id             Int          @id @default(autoincrement())
-  cashRegisterId Int
   transactionId  Int          @unique
   amountTendered Float
   changeGiven    Float
-  createdAt      DateTime     @default(now())
+  cashRegisterId Int
   cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
   transaction    Transaction  @relation(fields: [transactionId], references: [id])
+  createdAt      DateTime     @default(now())
 }
 
 model DailyClosing {

@@ -64,8 +64,8 @@ export class CustomersService {
       include: {
         transactions: {
           include: {
-            items: { include: { product: true } },
-            user: true,
+            items: { include: { Product: true } }, // Use "Product" with a capital "P"
+            User: true, // Include the User relation
           },
         },
       },

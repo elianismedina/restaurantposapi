@@ -17,8 +17,13 @@ export class TransactionsService {
     userId: number,
     branchId: number,
   ) {
-    const { productIds, quantities, paymentMethod, customerId } =
-      createTransactionDto;
+    const {
+      productIds,
+      quantities,
+      paymentMethod,
+      amountTendered,
+      customerId,
+    } = createTransactionDto;
 
     if (productIds.length !== quantities.length) {
       throw new BadRequestException('Product IDs and quantities must match');
@@ -51,25 +56,41 @@ export class TransactionsService {
       });
     }
 
+    if (
+      paymentMethod === 'cash' &&
+      (!amountTendered || amountTendered < total)
+    ) {
+      throw new BadRequestException('Insufficient cash tendered');
+    }
+
+    // Fetch the CashRegister ID for the user
+    const cashRegister = await this.prisma.cashRegister.findFirst({
+      where: { userId }, // Use findFirst for non-unique fields
+    });
+
+    if (!cashRegister) {
+      throw new BadRequestException('No cash register found for this user');
+    }
+
     // Create transaction and update stock
     return this.prisma.$transaction(async (prisma) => {
       const transaction = await prisma.transaction.create({
         data: {
-          user: {
-            connect: { id: userId },
+          User: {
+            connect: { id: userId }, // Relation to User
           },
-          branch: {
-            connect: { id: branchId },
+          Branch: {
+            connect: { id: branchId }, // Relation to Branch
           },
-          customer: customerId
+          Customer: customerId
             ? {
-                connect: { id: customerId }, // Associate transaction with the customer
+                connect: { id: customerId }, // Relation to Customer
               }
             : undefined,
           total,
           paymentMethod,
           items: {
-            create: transactionItems,
+            create: transactionItems, // Ensure this matches the items relation in your schema
           },
         },
         include: { items: true },
@@ -83,6 +104,23 @@ export class TransactionsService {
         });
       }
 
+      // Create cash transaction if payment method is cash
+      if (paymentMethod === 'cash') {
+        console.log('Creating cash transaction...');
+        await prisma.cashTransaction.create({
+          data: {
+            transaction: {
+              connect: { id: transaction.id }, // Use connect to reference the transaction
+            },
+            amountTendered,
+            changeGiven: amountTendered - total,
+            cashRegister: {
+              connect: { id: cashRegister.id }, // Ensure cashRegister.id is valid
+            },
+          },
+        });
+      }
+
       return transaction;
     });
   }
@@ -90,8 +128,9 @@ export class TransactionsService {
   findAll() {
     return this.prisma.transaction.findMany({
       include: {
-        items: true,
-        user: true,
+        items: true, // Include the items relation
+        User: true, // Include the User relation
+        Branch: true, // Include the Branch relation
       },
     });
   }
@@ -100,8 +139,9 @@ export class TransactionsService {
     const transaction = await this.prisma.transaction.findUnique({
       where: { id },
       include: {
-        items: true,
-        user: true,
+        items: true, // Include the items relation
+        User: true, // Include the User relation
+        Branch: true, // Include the Branch relation
       },
     });
     if (!transaction) {
@@ -119,8 +159,8 @@ export class TransactionsService {
         },
       },
       include: {
-        items: true,
-        user: true,
+        items: true, // Include the items relation
+        User: true, // Use "User" with a capital "U"
       },
     });
   }
