@@ -5,6 +5,7 @@ import { NotFoundException, ConflictException } from '@nestjs/common';
 
 describe('CustomersService', () => {
   let service: CustomersService;
+  let prisma: PrismaService;
 
   const mockPrismaService = {
     customer: {
@@ -28,6 +29,7 @@ describe('CustomersService', () => {
     }).compile();
 
     service = module.get<CustomersService>(CustomersService);
+    prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -67,6 +69,31 @@ describe('CustomersService', () => {
         code: 'P2002',
       });
 
+      await expect(service.create(createCustomerDto, branchId)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('should throw ConflictException when email already exists', async () => {
+      const createCustomerDto = {
+        name: 'John Doe',
+        email: 'johndoe@example.com',
+        phone: '1234567890',
+        address: '123 Main St',
+        preferences: {},
+      };
+      const branchId = 1;
+
+      // Mock the Prisma `findUnique` method to simulate an existing customer
+      jest.spyOn(prisma.customer, 'findUnique').mockResolvedValueOnce({
+        id: 1,
+        ...createCustomerDto,
+        branchId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Expect the service to throw a ConflictException
       await expect(service.create(createCustomerDto, branchId)).rejects.toThrow(
         ConflictException,
       );
@@ -188,5 +215,44 @@ describe('CustomersService', () => {
 
       await expect(service.remove(1)).rejects.toThrow(NotFoundException);
     });
+  });
+});
+
+describe('CustomersService', () => {
+  let service: CustomersService;
+  let prisma: PrismaService;
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [CustomersService, PrismaService],
+    }).compile();
+
+    service = module.get<CustomersService>(CustomersService);
+    prisma = module.get<PrismaService>(PrismaService);
+  });
+
+  it('should throw ConflictException when email already exists', async () => {
+    const createCustomerDto = {
+      name: 'John Doe',
+      email: 'johndoe@example.com',
+      phone: '1234567890',
+      address: '123 Main St',
+      preferences: {},
+    };
+    const branchId = 1;
+
+    // Mock the Prisma `findUnique` method to simulate an existing customer
+    jest.spyOn(prisma.customer, 'findUnique').mockResolvedValueOnce({
+      id: 1,
+      ...createCustomerDto,
+      branchId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Expect the service to throw a ConflictException
+    await expect(service.create(createCustomerDto, branchId)).rejects.toThrow(
+      ConflictException,
+    );
   });
 });

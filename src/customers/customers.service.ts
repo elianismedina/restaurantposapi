@@ -29,13 +29,19 @@ export class CustomersService {
       throw new Error('branchId is required to create a customer');
     }
 
+    // Check if a customer with the same email already exists
+    const existingCustomer = await this.prisma.customer.findUnique({
+      where: { email: createCustomerDto.email },
+    });
+
+    if (existingCustomer) {
+      throw new ConflictException('Customer with this email already exists');
+    }
+
     const customer = await this.prisma.customer.create({
       data: {
-        name: createCustomerDto.name,
-        email: createCustomerDto.email,
-        phone: createCustomerDto.phone,
-        address: createCustomerDto.address,
-        preferences: createCustomerDto.preferences,
+        ...createCustomerDto,
+        preferences: createCustomerDto.preferences || {}, // Provide a default value if preferences is undefined
         branch: {
           connect: {
             id: branchId,

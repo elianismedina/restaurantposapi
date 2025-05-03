@@ -25,15 +25,15 @@ import { Request } from 'express';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  @Post()
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  @Post()
   @ApiOperation({ summary: 'Create a new product' })
   @ApiResponse({ status: 201, description: 'Product created successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  createProduct(
+  async createProduct(
     @Body() createProductDto: CreateProductDto,
-    @Query('branchId') branchId: string, // branchId will be a string from the query
+    @Query('branchId') branchId: string,
   ) {
     const branchIdNumber = parseInt(branchId, 10);
 

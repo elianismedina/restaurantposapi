@@ -38,8 +38,9 @@ describe('AuthController', () => {
     const createUserDto: CreateUserDto = {
       username: 'testuser',
       password: 'password123',
-      role: 'cashier',
+      role: 'admin',
       email: 'test@example.com',
+      branchId: 1, // Add the required branchId
     };
 
     it('should register a new user', async () => {

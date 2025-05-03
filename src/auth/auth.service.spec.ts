@@ -3,13 +3,13 @@ import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 
 // Mock bcrypt
 jest.mock('bcrypt', () => ({
   hash: jest.fn(),
   compare: jest.fn(),
 }));
-import * as bcrypt from 'bcrypt';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -24,7 +24,6 @@ describe('AuthService', () => {
   };
 
   beforeEach(async () => {
-    // Create mock implementations
     mockPrismaService = {
       user: {
         create: jest.fn(),
@@ -51,8 +50,6 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-
-    // Clear mock calls between tests
     jest.clearAllMocks();
   });
 
@@ -66,18 +63,17 @@ describe('AuthService', () => {
       password: 'password123',
       role: 'cashier',
       email: 'test@example.com',
+      branchId: 1,
     };
 
     it('should register a new user successfully', async () => {
-      // Mock bcrypt hash
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
-
-      // Mock prisma create
       const expectedUser = {
         id: 1,
         username: createUserDto.username,
         role: createUserDto.role,
         email: createUserDto.email,
+        branchId: createUserDto.branchId,
       };
       mockPrismaService.user.create.mockResolvedValue(expectedUser);
 
@@ -91,6 +87,9 @@ describe('AuthService', () => {
           password: 'hashedPassword',
           role: createUserDto.role,
           email: createUserDto.email,
+          branch: {
+            connect: { id: createUserDto.branchId },
+          },
         },
       });
     });
@@ -103,19 +102,16 @@ describe('AuthService', () => {
     };
 
     it('should login successfully and return access token', async () => {
-      // Mock bcrypt compare
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-
-      // Mock prisma findUnique
       const mockUser = {
         id: 1,
         username: loginDto.username,
         password: 'hashedPassword',
         role: 'cashier',
+        branchId: 1, // Include branchId in mockUser
+        branch: { id: 1 }, // Simulate included branch relation
       };
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
-
-      // Mock jwt sign
       const mockToken = 'jwt-token';
       mockJwtService.sign.mockReturnValue(mockToken);
 
@@ -130,6 +126,7 @@ describe('AuthService', () => {
         username: mockUser.username,
         sub: mockUser.id,
         role: mockUser.role,
+        branchId: mockUser.branch?.id || null, // Include branchId in expected payload
       });
     });
 
@@ -143,14 +140,14 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException when password is incorrect', async () => {
-      // Mock bcrypt compare to return false (password doesn't match)
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-
       const mockUser = {
         id: 1,
         username: loginDto.username,
         password: 'hashedPassword',
         role: 'cashier',
+        branchId: 1,
+        branch: { id: 1 },
       };
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
 

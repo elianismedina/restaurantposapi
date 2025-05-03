@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUserDto, LoginDto } from './dto/create-user.dto';
@@ -20,7 +20,9 @@ export class AuthService {
         email: userDto.email,
         password: hashedPassword,
         role: userDto.role,
-        branchId: userDto.branchId, // Ensure branchId is included
+        branch: userDto.branchId
+          ? { connect: { id: userDto.branchId } }
+          : undefined, // Use branch relation
       },
     });
   }
@@ -35,19 +37,20 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     // Validate the password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new Error('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const payload = {
       sub: user.id,
       username: user.username,
-      branchId: user.branch?.id || null, // Include branchId in the payload
+      role: user.role, // Include role in payload
+      branchId: user.branch?.id || null, // Include branchId in payload
     };
 
     const token = this.jwtService.sign(payload);
@@ -60,7 +63,7 @@ export class AuthService {
     const userIdNumber = parseInt(userId, 10); // Convert userId to a number
 
     if (isNaN(userIdNumber)) {
-      throw new Error('Invalid userId: must be a number');
+      throw new UnauthorizedException('Invalid userId: must be a number');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -71,7 +74,7 @@ export class AuthService {
     console.log('User with Branch:', user); // Debugging line
 
     if (!user) {
-      throw new Error('User not found');
+      throw new UnauthorizedException('User not found');
     }
 
     const branchId = user.branch?.id || null; // Extract branchId or set to null if not found

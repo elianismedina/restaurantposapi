@@ -19,6 +19,14 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   stock: number;
+
+  @ApiProperty({ description: 'Category ID', required: true })
+  @IsNumber()
+  categoryId: number;
+
+  @ApiProperty({ description: 'Subcategory ID (optional)', required: false })
+  @IsNumber()
+  subcategoryId?: number; // Optional field
 }
 
 export class UpdateProductDto {

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto, UpdateProductDto } from './dto/products.dto';
 
@@ -6,24 +10,42 @@ import { CreateProductDto, UpdateProductDto } from './dto/products.dto';
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
-  create(createProductDto: CreateProductDto, branchId: number | string) {
-    const branchIdNumber =
-      typeof branchId === 'string' ? parseInt(branchId, 10) : branchId;
+  async create(createProductDto: CreateProductDto, branchId: number) {
+    const { categoryId, subcategoryId, ...productData } = createProductDto;
 
-    if (isNaN(branchIdNumber)) {
-      throw new Error('Invalid branchId: must be a number');
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+    });
+    if (!category) {
+      throw new BadRequestException(
+        `Category with ID ${categoryId} does not exist`,
+      );
+    }
+
+    if (subcategoryId) {
+      const subcategory = await this.prisma.category.findUnique({
+        where: { id: subcategoryId },
+      });
+      if (!subcategory) {
+        throw new BadRequestException(
+          `Subcategory with ID ${subcategoryId} does not exist`,
+        );
+      }
+    }
+
+    const categoriesToConnect = [{ id: categoryId }]; // Always connect the category
+    if (subcategoryId) {
+      categoriesToConnect.push({ id: subcategoryId }); // Connect the subcategory only if provided
     }
 
     return this.prisma.product.create({
       data: {
-        name: createProductDto.name,
-        sku: createProductDto.sku,
-        price: createProductDto.price,
-        stock: createProductDto.stock,
+        ...productData,
         branch: {
-          connect: {
-            id: branchIdNumber, // Ensure branchId is a number
-          },
+          connect: { id: branchId },
+        },
+        categories: {
+          connect: categoriesToConnect,
         },
       },
     });
@@ -73,7 +95,7 @@ export class ProductsService {
         },
       },
       include: {
-        categories: true, // Include category details if needed
+        categories: true,
       },
     });
   }

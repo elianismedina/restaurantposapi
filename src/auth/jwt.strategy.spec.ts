@@ -1,56 +1,52 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtStrategy } from './jwt.strategy';
-import { ConfigService } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
+import { JwtModule } from '@nestjs/jwt';
 
 describe('JwtStrategy', () => {
-  let strategy: JwtStrategy;
-  let mockConfigService: {
-    get: jest.Mock;
-  };
+  let jwtStrategy: JwtStrategy;
 
   beforeEach(async () => {
-    // Create mock implementation with JWT secret
-    mockConfigService = {
-      get: jest.fn((key) => {
-        if (key === 'JWT_SECRET') {
-          return 'test-secret';
-        }
-        return null;
-      }),
-    };
+    // Set JWT_SECRET for the test environment
+    process.env.JWT_SECRET = 'test-secret';
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        JwtStrategy,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+      imports: [
+        PassportModule,
+        JwtModule.register({
+          secret: 'test-secret',
+          signOptions: { expiresIn: '3600s' },
+        }),
       ],
+      providers: [JwtStrategy],
     }).compile();
 
-    strategy = module.get<JwtStrategy>(JwtStrategy);
+    jwtStrategy = module.get<JwtStrategy>(JwtStrategy);
+  });
+
+  afterEach(() => {
+    // Clean up environment variable
+    delete process.env.JWT_SECRET;
   });
 
   it('should be defined', () => {
-    expect(strategy).toBeDefined();
-    expect(mockConfigService.get).toHaveBeenCalledWith('JWT_SECRET');
+    expect(jwtStrategy).toBeDefined();
   });
 
   describe('validate', () => {
-    it('should return user object from payload', () => {
-      const mockPayload = {
+    it('should return user object from payload', async () => {
+      const payload = {
         sub: 1,
         username: 'testuser',
-        role: 'cashier',
+        branchId: 1,
       };
 
-      const result = strategy.validate(mockPayload);
+      const result = await jwtStrategy.validate(payload);
 
       expect(result).toEqual({
-        userId: mockPayload.sub,
-        username: mockPayload.username,
-        role: mockPayload.role,
+        userId: payload.sub,
+        username: payload.username,
+        branchId: payload.branchId,
       });
     });
   });
