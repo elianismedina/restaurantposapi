@@ -1,18 +1,12 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/transaction.dto';
-import { CashService } from '../cash/cash.service';
-import { CustomersService } from '../customers/customers.service';
 
 @Injectable()
 export class TransactionsService {
-  constructor(
-    private prisma: PrismaService,
-    private cashService: CashService,
-    private customersService: CustomersService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  async create(
+  async createTransaction(
     createTransactionDto: CreateTransactionDto,
     userId: number,
     branchId: number,
@@ -44,6 +38,12 @@ export class TransactionsService {
       const product = products.find((p) => p.id === productIds[i]);
       const quantity = quantities[i];
 
+      if (!product) {
+        throw new BadRequestException(
+          `Product with ID ${productIds[i]} not found`,
+        );
+      }
+
       if (product.stock < quantity) {
         throw new BadRequestException(`Insufficient stock for ${product.name}`);
       }
@@ -64,8 +64,8 @@ export class TransactionsService {
     }
 
     // Fetch the CashRegister ID for the user
-    const cashRegister = await this.prisma.cashRegister.findFirst({
-      where: { userId }, // Use findFirst for non-unique fields
+    const cashRegister = await this.prisma.cashRegister.findUnique({
+      where: { userId },
     });
 
     if (!cashRegister) {
@@ -77,23 +77,23 @@ export class TransactionsService {
       const transaction = await prisma.transaction.create({
         data: {
           User: {
-            connect: { id: userId }, // Relation to User
+            connect: { id: userId },
           },
           Branch: {
-            connect: { id: branchId }, // Relation to Branch
+            connect: { id: branchId },
           },
           Customer: customerId
             ? {
-                connect: { id: customerId }, // Relation to Customer
+                connect: { id: customerId },
               }
             : undefined,
           total,
           paymentMethod,
           items: {
-            create: transactionItems, // Ensure this matches the items relation in your schema
+            create: transactionItems,
           },
         },
-        include: { items: true },
+        include: { items: { include: { Product: true } } },
       });
 
       // Update stock
@@ -106,16 +106,16 @@ export class TransactionsService {
 
       // Create cash transaction if payment method is cash
       if (paymentMethod === 'cash') {
-        console.log('Creating cash transaction...');
         await prisma.cashTransaction.create({
           data: {
             transaction: {
-              connect: { id: transaction.id }, // Use connect to reference the transaction
+              // Changed from transactionId to transaction
+              connect: { id: transaction.id },
             },
             amountTendered,
             changeGiven: amountTendered - total,
             cashRegister: {
-              connect: { id: cashRegister.id }, // Ensure cashRegister.id is valid
+              connect: { id: cashRegister.id },
             },
           },
         });
@@ -125,32 +125,13 @@ export class TransactionsService {
     });
   }
 
-  findAll() {
+  async findAll() {
     return this.prisma.transaction.findMany({
-      include: {
-        items: true, // Include the items relation
-        User: true, // Include the User relation
-        Branch: true, // Include the Branch relation
-      },
+      include: { items: { include: { Product: true } } },
     });
   }
 
-  async findOne(id: number) {
-    const transaction = await this.prisma.transaction.findUnique({
-      where: { id },
-      include: {
-        items: true, // Include the items relation
-        User: true, // Include the User relation
-        Branch: true, // Include the Branch relation
-      },
-    });
-    if (!transaction) {
-      throw new BadRequestException('Transaction not found');
-    }
-    return transaction;
-  }
-
-  getSalesReport(startDate: Date, endDate: Date) {
+  async getSalesReport(startDate: Date, endDate: Date) {
     return this.prisma.transaction.findMany({
       where: {
         createdAt: {
@@ -158,10 +139,7 @@ export class TransactionsService {
           lte: endDate,
         },
       },
-      include: {
-        items: true, // Include the items relation
-        User: true, // Use "User" with a capital "U"
-      },
+      include: { items: { include: { Product: true } } },
     });
   }
 }
